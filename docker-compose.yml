@@ -1,0 +1,104 @@
+version: '3.9'
+
+services:
+  telegraph:
+    image: telegraf:latest
+    container_name: telegraph_comp
+    hostname: 76d3f22b9267
+    environment:
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - TELEGRAF_VERSION=1.21.3
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks:
+      - lora_network
+    restart: "no"
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb_comp
+    hostname: 9183b5a60883
+    environment:
+      - MARIADB_ROOT_PASSWORD=root
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - GOSU_VERSION=1.17
+      - LANG=C.UTF-8
+      - MARIADB_VERSION=1:11.2.2+maria~ubu2204
+    volumes:
+      - lora_network_mariadb_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    labels:
+      org.opencontainers.image.authors: "MariaDB Community"
+      org.opencontainers.image.base.name: "docker.io/library/ubuntu:jammy"
+      org.opencontainers.image.description: "MariaDB Database for relational SQL"
+      org.opencontainers.image.documentation: "https://hub.docker.com//mariadb/"
+      org.opencontainers.image.licenses: "GPL-2.0"
+      org.opencontainers.image.ref.name: "ubuntu"
+      org.opencontainers.image.source: "https://github.com/MariaDB/mariadb-docker"
+      org.opencontainers.image.title: "MariaDB Database"
+      org.opencontainers.image.url: "https://github.com/MariaDB/mariadb-docker"
+      org.opencontainers.image.vendor: "MariaDB Community"
+      org.opencontainers.image.version: "11.2.2"
+    networks:
+      - lora_network
+    restart: "no"
+
+  influxdb:
+    image: influxdb:2.0
+    container_name: influxdb_comp
+    hostname: e22e475041cf
+    environment:
+      - INFLUXDB_UDP_ENABLED=true
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - GOSU_VER=1.12
+      - INFLUXDB_VERSION=2.0.9
+      - INFLUX_CONFIGS_PATH=/etc/influxdb2/influx-configs
+      - INFLUXD_INIT_PORT=9999
+      - INFLUXD_INIT_PING_ATTEMPTS=600
+      - DOCKER_INFLUXDB_INIT_CLI_CONFIG_NAME=default
+    volumes:
+      - lora_network_influxdb_data:/root/.influxdb2
+      - /etc/influxdb2:/etc/influxdb2
+      - /var/lib/influxdb2:/var/lib/influxdb2
+    ports:
+      - "8086:8086"
+      - "8089:8089/udp"
+    networks:
+      - lora_network
+    restart: "no"
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: grafana_comp
+    hostname: 7029b57b3392
+    user: "472"
+    environment:
+      - PATH=/usr/share/grafana/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_HOME=/usr/share/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
+      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - lora_network_grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    labels:
+      maintainer: "Grafana Labs <hello@grafana.com>"
+    networks:
+      - lora_network
+    restart: "no"
+
+volumes:
+  lora_network_mariadb_data:
+    external: true
+  lora_network_influxdb_data:
+    external: true
+  lora_network_grafana_data:
+    external: true
+
+networks:
+  lora_network:
+    driver: bridge
