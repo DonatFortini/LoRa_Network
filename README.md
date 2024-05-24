@@ -4,7 +4,7 @@
 
 Disclaimer : Docker must be already installed on your machine. Arduino IDE is recommended.
 
-Clone the repo, then execute *install.sh* script to setup your docker volumes.
+Clone the repo, then execute the *install.sh* script to setup your docker volumes.
 Once it's done run this command : 
 ```bash
 docker-compose up -d 
