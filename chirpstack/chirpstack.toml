@@ -1,0 +1,39 @@
+# Fichier de configuration ChirpStack
+# Enregistrez ce fichier à l'emplacement ./chirpstack/chirpstack.toml
+
+[postgresql]
+dsn = "postgres://chirpstack:password@postgres/chirpstack?sslmode=disable"
+
+[redis]
+url = "redis://redis:6379"
+
+[api]
+bind = "0.0.0.0:8080"
+
+[integration]
+enabled = ["mqtt"]
+
+[integration.mqtt]
+server = "tcp://mosquitto:1883"
+event_topic_template = "chirpstack/events/{{.ApplicationID}}/{{.DeviceInfo.DevEUI}}"
+command_topic_template = "chirpstack/commands/{{.ApplicationID}}/{{.DeviceInfo.DevEUI}}"
+
+[gateway]
+# Configuration pour la communication avec les passerelles
+[gateway.backend]
+type = "mqtt"
+
+[gateway.backend.mqtt]
+server = "tcp://mosquitto:1883"
+topic_prefix = "chirpstack/gateways"
+
+[network]
+enabled_regions = [
+    "eu868",
+] # Remplacez par votre région LoRaWAN (eu868, us915, etc.)
+
+[network.eu868]
+enabled_uplink_channels = [0, 1, 2, 3, 4, 5, 6, 7]
+
+[geolocation]
+# Configuration de la géolocalisation (optionnel)

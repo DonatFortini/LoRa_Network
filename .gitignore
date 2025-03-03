@@ -1,18 +1,17 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# .gitignore pour ChirpStack Docker setup
 
-# Other files and folders
-.settings/
+# Fichiers sensibles (peuvent contenir des mots de passe)
+# Décommentez ces lignes si vous ne souhaitez pas stocker les mots de passe dans Git
+# .env
+# chirpstack/chirpstack.toml
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+# Données persistantes (peut être volumineux et contenir des informations sensibles)
+# Décommentez si vous préférez ne pas stocker les données mais seulement la configuration
+# data/postgres/
+# data/redis/
+# data/mosquitto/
+# data/lorawan-devices/
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# Fichiers temporaires
+*.log
+*.tmp
