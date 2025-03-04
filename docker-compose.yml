@@ -1,90 +1,89 @@
-# docker-compose.yml avec montages locaux pour Git
-version: "3"
-
 services:
-  # PostgreSQL database avec données stockées localement
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    command: -c /etc/chirpstack
+    restart: unless-stopped
+    volumes:
+      - ./configuration/chirpstack:/etc/chirpstack
+    depends_on:
+      - postgres
+      - mosquitto
+      - redis
+    environment:
+      - MQTT_BROKER_HOST=mosquitto
+      - REDIS_HOST=redis
+      - POSTGRESQL_HOST=postgres
+    ports:
+      - "8080:8080"
+
+  chirpstack-gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    ports:
+      - "1700:1700/udp"
+    volumes:
+      - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    environment:
+      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      - INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=eu868/gateway/{{ .GatewayID }}/command/#
+    depends_on:
+      - mosquitto
+
+  chirpstack-gateway-bridge-basicstation:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    command: -c /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge-basicstation-eu868.toml
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    depends_on:
+      - mosquitto
+
+  chirpstack-rest-api:
+    image: chirpstack/chirpstack-rest-api:4
+    restart: unless-stopped
+    command: --server chirpstack:8080 --bind 0.0.0.0:8090 --insecure
+    ports:
+      - "8090:8090"
+    depends_on:
+      - chirpstack
+
   postgres:
     image: postgres:14-alpine
-    container_name: chirpstack_postgres
     restart: unless-stopped
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./configuration/postgresql/initdb:/docker-entrypoint-initdb.d
+      - chirpstack-postgresql:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=password
       - POSTGRES_USER=chirpstack
+      - POSTGRES_PASSWORD=chirpstack
       - POSTGRES_DB=chirpstack
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chirpstack"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # Redis database
   redis:
     image: redis:7-alpine
-    container_name: chirpstack_redis
     restart: unless-stopped
+    command: redis-server --save 300 1 --save 60 100 --appendonly no
     volumes:
-      - ./data/redis:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - chirpstack-redis:/data
 
-  # MQTT broker (Mosquitto)
   mosquitto:
     image: eclipse-mosquitto:2
-    container_name: chirpstack_mosquitto
     restart: unless-stopped
     ports:
       - "1883:1883"
     volumes:
-      - ./data/mosquitto/data:/mosquitto/data
-      - ./data/mosquitto/log:/mosquitto/log
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "mosquitto_sub",
-          "-t",
-          "$$SYS/#",
-          "-C",
-          "1",
-          "-i",
-          "healthcheck",
-          "-W",
-          "5",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./configuration/mosquitto/config/:/mosquitto/config/
+      - chirpstack-mosquitto-data:/mosquitto/data
+      - chirpstack-mosquitto-log:/mosquitto/log
 
-  # ChirpStack
-  chirpstack:
-    image: chirpstack/chirpstack:4
-    container_name: chirpstack
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      mosquitto:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./chirpstack:/etc/chirpstack
-      - ./data/lorawan-devices:/opt/chirpstack/lorawan-devices
-    command: --config /etc/chirpstack
-    environment:
-      # Variables d'environnement pour dépannage - utiles pour priorité sur le fichier de config
-      - POSTGRESQL__DSN=postgres://chirpstack:password@postgres/chirpstack?sslmode=disable
-      - REDIS__URL=redis://redis:6379
-      - MQTT__SERVER=tcp://mosquitto:1883
-      - INTEGRATION__MQTT__SERVER=tcp://mosquitto:1883
-      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=chirpstack/events/{{.ApplicationID}}/{{.DeviceInfo.DevEUI}}
-      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=chirpstack/commands/{{.ApplicationID}}/{{.DeviceInfo.DevEUI}}
+volumes:
+  chirpstack-postgresql:
+    name: chirpstack-postgresql-data
+  chirpstack-redis:
+    name: chirpstack-redis-data
+  chirpstack-mosquitto-data:
+    name: chirpstack-mosquitto-data
+  chirpstack-mosquitto-log:
+    name: chirpstack-mosquitto-log

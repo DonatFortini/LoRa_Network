@@ -1,17 +1,40 @@
-# .gitignore pour ChirpStack Docker setup
+# Runtime data
+.env
 
-# Fichiers sensibles (peuvent contenir des mots de passe)
-# Décommentez ces lignes si vous ne souhaitez pas stocker les mots de passe dans Git
-# .env
-# chirpstack/chirpstack.toml
+# Docker volumes (if stored locally)
+docker-volumes/
 
-# Données persistantes (peut être volumineux et contenir des informations sensibles)
-# Décommentez si vous préférez ne pas stocker les données mais seulement la configuration
-# data/postgres/
-# data/redis/
-# data/mosquitto/
-# data/lorawan-devices/
-
-# Fichiers temporaires
+# Logs
+logs/
 *.log
+
+# Temporary files
 *.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Local configuration files that may contain sensitive information
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Generated data files
+data/
+
+# PostgreSQL data files (if not using Docker volumes)
+configuration/postgresql/data/
+
+# Redis data files (if not using Docker volumes)
+configuration/redis/data/
+
+# Mosquitto data and log files (if not using Docker volumes)
+configuration/mosquitto/data/
+configuration/mosquitto/log/
+
+# Editor-specific files
+.idea/
+.vscode/
+*.swp
+*.swo

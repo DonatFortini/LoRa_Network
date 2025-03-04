@@ -1,108 +1,149 @@
-# ChirpStack Docker Setup
+# ChirpStack LoRaWAN Network Server
 
-Configuration Docker pour déployer ChirpStack avec volumes locaux pour la persistance et le versionnement via Git.
+Ce dépôt propose une configuration Docker complète pour déployer et gérer une instance de ChirpStack (EU868), basée sur la configuration originale v4. Le projet inclut également un script de gestion pour simplifier les opérations courantes. Ce fork ajoute la persistance des volumes ainsi qu'un système de sauvegarde et de débogage.
 
-## Structure du projet
+## Composants
 
-```
-chirpstack-docker/
-├── .gitignore                # Configuration Git (quels fichiers ignorer)
-├── README.md                 # Ce fichier de documentation
-├── docker-compose.yml        # Configuration Docker Compose
-├── setup.sh                  # Script d'initialisation et de gestion
-├── init-db.sh                # Script d'initialisation PostgreSQL
-├── mosquitto.conf            # Configuration pour le broker MQTT
-├── chirpstack/               # Configuration ChirpStack
-│   └── chirpstack.toml       # Fichier de configuration principal
-└── data/                     # Données persistantes (créé automatiquement)
-    ├── postgres/             # Données PostgreSQL
-    ├── redis/                # Données Redis
-    ├── mosquitto/            # Données et logs Mosquitto
-    └── lorawan-devices/      # Définitions d'appareils LoRaWAN
-```
+Le déploiement inclut les services suivants :
+
+- **ChirpStack** : Serveur réseau LoRaWAN principal
+- **ChirpStack Gateway Bridge** : Pont entre les passerelles LoRaWAN et le serveur réseau
+- **ChirpStack Gateway Bridge BasicStation** : Support pour les passerelles utilisant le protocole BasicStation
+- **ChirpStack REST API** : API REST pour interagir avec ChirpStack
+- **PostgreSQL** : Base de données pour stocker les informations des appareils et des applications
+- **Redis** : Stockage de données pour les files d'attente et le cache
+- **Mosquitto** : Broker MQTT pour la communication entre les composants
 
 ## Prérequis
 
-- Docker et Docker Compose installés
-- Git installé (pour le clonage et la gestion du dépôt)
+- Docker
+- Docker Compose
+- Git (pour le clonage du dépôt)
+- Bash
 
 ## Installation
 
-1. Clonez ce dépôt sur votre machine locale ou serveur:
+1. Clonez ce dépôt :
+
+   ```bash
+   git clone https://github.com/DonatFortini/LoRa_Network.git
+   cd LoRa_Network
+   ```
+
+2. Rendez le script de gestion exécutable :
+
+   ```bash
+   chmod +x manage-chirpstack.sh
+   ```
+
+3. Initialisez l'environnement :
+
+   ```bash
+   ./manage-chirpstack.sh init
+   ```
+
+4. Démarrez les services :
+   ```bash
+   ./manage-chirpstack.sh start
+   ```
+
+## Utilisation du script de gestion
+
+Le script `manage-chirpstack.sh` fournit plusieurs commandes pour gérer votre déploiement :
+
+- **init** : Initialise l'environnement en créant les répertoires et fichiers de configuration nécessaires
+- **start** : Démarre tous les services
+- **stop** : Arrête tous les services
+- **restart** : Redémarre tous les services
+- **status** : Affiche l'état de tous les conteneurs
+- **reset** : Supprime tous les conteneurs et volumes (destructif, avec confirmation)
+- **backup** : Crée une sauvegarde complète de toutes les données et configurations
+- **restore <fichier_backup>** : Restaure depuis un fichier de sauvegarde
+
+Exemples d'utilisation :
 
 ```bash
-git clone <URL_DU_REPO> chirpstack-docker
-cd chirpstack-docker
+# Voir l'état des services
+./manage-chirpstack.sh status
+
+# Créer une sauvegarde
+./manage-chirpstack.sh backup
+
+# Restaurer depuis une sauvegarde
+./manage-chirpstack.sh restore ./backups/chirpstack_backup_20250304_123456.tar.gz
 ```
 
-2. Initialisez l'environnement:
+## Structure des volumes
 
-```bash
-chmod +x setup.sh
-./setup.sh init
+Les données persistantes sont stockées dans les volumes Docker suivants :
+
+- **chirpstack-postgresql-data** : Données PostgreSQL
+- **chirpstack-redis-data** : Données Redis
+- **chirpstack-mosquitto-data** : Données Mosquitto
+- **chirpstack-mosquitto-log** : Logs Mosquitto
+
+## Configuration
+
+Les fichiers de configuration se trouvent dans le répertoire `configuration` :
+
+- **chirpstack/** : Configuration du serveur ChirpStack
+- **chirpstack-gateway-bridge/** : Configuration du Bridge Gateway
+- **mosquitto/config/** : Configuration du broker MQTT
+- **postgresql/initdb/** : Scripts d'initialisation de PostgreSQL
+
+### Configuration Mosquitto
+
+Le broker MQTT est configuré avec une authentification anonyme par défaut :
+
+```
+listener 1883
+allow_anonymous true
 ```
 
-3. Démarrez ChirpStack:
+Pour renforcer la sécurité en production, vous devriez configurer l'authentification.
 
-```bash
-./setup.sh start
-```
+## Accès à l'interface web
 
-4. Accédez à l'interface web:
-   - URL: http://localhost:8080 (ou l'adresse IP de votre serveur)
-   - Utilisateur: admin
-   - Mot de passe: admin
+L'interface web de ChirpStack est accessible à l'adresse : http://localhost:8080
 
-## Utilisation
+Utilisateur par défaut :
 
-Le script `setup.sh` permet de gérer facilement votre installation:
+- **Nom d'utilisateur** : admin
+- **Mot de passe** : admin
 
-- `./setup.sh init`: Initialise l'environnement (création des répertoires, etc.)
-- `./setup.sh start`: Démarre les services ChirpStack
-- `./setup.sh stop`: Arrête les services
-- `./setup.sh restart`: Redémarre les services
-- `./setup.sh logs`: Affiche les logs en temps réel
+## Interface API REST
 
-## Configuration avancée
+L'API REST de ChirpStack est disponible à l'adresse : http://localhost:8090
 
-### Personnalisation de ChirpStack
+## Sauvegardes
 
-Pour modifier la configuration de ChirpStack, éditez le fichier `chirpstack/chirpstack.toml`.
+Les sauvegardes sont stockées dans le répertoire `backups/` et contiennent :
 
-### Personnalisation du broker MQTT
+- Dump complet de la base de données PostgreSQL
+- Données Redis
+- Tous les fichiers de configuration
 
-Pour modifier la configuration de Mosquitto, éditez le fichier `mosquitto.conf`.
+## Gestion des passerelles
 
-### Sécurité
+Ce déploiement prend en charge :
 
-Pour un environnement de production:
+- Les passerelles utilisant le protocole Semtech UDP sur le port 1700
+- Les passerelles BasicStation sur le port 3001
 
-1. Modifiez les mots de passe par défaut dans `docker-compose.yml`
-2. Configurez l'authentification pour MQTT dans `mosquitto.conf`
-3. Activez TLS/SSL pour les communications
+## Configuration régionale
 
-## Sauvegarde et restauration
+La configuration par défaut est pour la région EU868. Pour d'autres régions, modifiez les fichiers de configuration appropriés dans le répertoire `configuration/`.
 
-Les données sont stockées dans le répertoire `./data/` et peuvent être sauvegardées et versionnées selon vos besoins.
+## Sécurité
 
-Pour une sauvegarde complète:
+Pour un déploiement en production, assurez-vous de :
 
-```bash
-# Arrêtez les services
-./setup.sh stop
+1. Configurer des mots de passe forts pour PostgreSQL et l'interface utilisateur
+2. Configurer l'authentification MQTT
+3. Activer TLS/SSL pour les connexions
+4. Limiter l'exposition des ports
 
-# Sauvegardez le répertoire data
-tar -czvf chirpstack-backup-$(date +%Y%m%d).tar.gz data/
+## Ressources supplémentaires
 
-# Redémarrez les services
-./setup.sh start
-```
-
-## Mise à jour
-
-Pour mettre à jour les images Docker:
-
-```bash
-docker compose pull
-./setup.sh restart
-```
+- [Documentation officielle de ChirpStack](https://www.chirpstack.io/docs/)
+- [GitHub ChirpStack](https://github.com/chirpstack/chirpstack)
